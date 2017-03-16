@@ -18,9 +18,10 @@ var delta = [];
 var sites = [];
 var bolhaEnd = false;
 var nepremEnd = false;
+var stojaEnd = false;
 
 function onEnd() {
-	if (bolhaEnd && nepremEnd){
+	if (bolhaEnd && nepremEnd && stojaEnd){
 		if (delta.length > 0){
 			var mailContent = "";
 			for (var i = 0; i < delta.length; i++){
@@ -48,6 +49,7 @@ function onEnd() {
 		}
 		bolhaEnd = false;
 		nepremEnd = false;
+		stojaEnd = false;
 		
 	}
 } 
@@ -115,7 +117,36 @@ sites.push({
 	}
 });
 
+sites.push({
+    url: config.url_stoja,
+    callback: function (err, body) {
+        var stojaDelta = 0;
+        if(body) {
+            var $ = cheerio.load(body);
+            var nAds = $(".oglas_holder .col-xs-12.col-md-7");
 
+            for (var i = 0; i < nAds.length; i++){
+                var ad = {
+                    id: 	$(nAds[i]).find("h3").text(),//id: nAds[i].children[1].children[0].attribs.title,
+                    title: 	$(nAds[i]).find("h3").text(),//nAds[i].children[1].children[0].children[0].children[0].data,
+                    desc: 	$(nAds[i]).find(".opis").text(),//nAds[i].children[5].children[9].children[1].children[0].data,
+                    conn: 	"http://www.stoja-trade.si" + $(nAds[i]).find('.oglas-single-top')[0].attribs.href,//nAds[i].children[1].children[0].attribs.href,
+                    price: 	$(nAds[i]).find('.oglasCena').text()//nAds[i].children[5].children[13].children[4].children[0].data
+                };
+			    try {
+					db.getData("/N"+ad.id);
+				} catch (err){
+					stojaDelta += 1;
+					db.push("/N"+ad.id,ad);
+					delta.push(ad);
+				}
+            }
+        }
+        console.log((new Date()).toString() + " stoja-trade.si Delta: " + stojaDelta);
+        stojaEnd = true;
+        onEnd();
+    }
+});
 
 setInterval( 
 	function(){
